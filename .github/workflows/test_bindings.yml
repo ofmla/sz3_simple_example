@@ -1,0 +1,89 @@
+name: SZ3 Fortran Bindings Testing
+
+# Define when to trigger the workflow
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  test_bindings:
+    name: Test SZ3 Fortran bindings on ubuntu-latest
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        gcc-version: [9, 10, 11]
+
+    steps:
+      # Setup GCC
+      - name: Get compiler
+        uses: fortran-lang/setup-fortran@v1
+        with:
+          compiler: gcc
+          version: ${{ matrix.gcc-version }}
+
+      # Clone the SZ3 repository
+      - name: Clone SZ3 repository
+        uses: GuillaumeFalourd/clone-github-repo-action@v2.3
+        with:
+          depth: 1
+          branch: 'v3.1.8'
+          owner: 'szcompressor'
+          repository: 'SZ3'
+
+      # Access the cloned repository content and build the library
+      - name: Access cloned repository content and build library
+        run: |
+          echo "ROOT"
+          ls -la
+          echo "CLONED REPO"
+          cd SZ3
+          cmake -S . -B build -DCMAKE_VERBOSE_MAKEFILE=ON
+          cmake --build build
+          sudo cmake --install build
+    
+      # Install python
+      - name: Install Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      #  Install numpy as it does not come with Python by default
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade numpy
+  
+      # Run pysz test
+      - name: Run test.py
+        run: |
+          cd SZ3/tools/pysz
+          echo "GET DATA"
+          wget -O ./density_128x128x256.d64 https://github.com/NCAR/SPERR/raw/main/test_data/density_128x128x256.d64
+          cp density_128x128x256.d64 ${RUNNER_TEMP}
+          awk 'NR==8 { $0 = "data = np.fromfile(\"density_128x128x256.d64\", dtype=np.float64)" }
+               NR==9 { $0 = "data = np.reshape(data, (128, 128, 256))" }
+               NR==18 { $0 = "sz = SZ(\"/usr/local/lib/{}\".format(lib_extention))" }
+               1' test.py > tmpfile && mv tmpfile test.py
+          python test.py > ${RUNNER_TEMP}/python_output.txt
+
+      # Clone the own repository to access test data files
+      - name: Clone own repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Build executable and compare output files
+      - name: Build executable and compare files
+        run: |
+          awk 'NR==8 { $0 = "C_INCLUDE = -I/usr/local/include" }
+               NR==11 { $0 = "LIBS = -L/usr/local/lib -lSZ3c" }
+               NR==14 { $0 = "RPATH = -Wl,-rpath=/usr/local/lib" }
+               1' Makefile > tmpfile && mv tmpfile Makefile
+          make
+          ./test_fsz3 > ${RUNNER_TEMP}/fortran_output.txt
+          python_val=$(tail -n 1 ${RUNNER_TEMP}/python_output.txt | awk -F'=' '{printf "%.10f\n", $2}')
+          fortran_val=$(tail -n 1 ${RUNNER_TEMP}/fortran_output.txt | awk -F'=' '{printf "%.10f\n", $2}') 
+          if [ "$python_output_value" = "$fortran_output_value" ]; then echo "Values are equal"; else echo "Values are different"; exit 1; fi
