@@ -67,7 +67,7 @@ program test_fsz3
     r3 = dimx; r2 = dimy; r1 = dimz
 
   
-    open(unit=iunit, file="/Users/oscarmojica/test_data/density_128x128x256.d64", status='old', access='stream', &
+    open(unit=iunit, file="density_128x128x256.d64", status='old', access='stream', &
          form='unformatted', action='read', iostat=ios)
     if (ios .ne. 0) then
       write(*,*) "Error opening input file."
