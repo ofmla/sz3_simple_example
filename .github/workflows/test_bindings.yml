@@ -89,4 +89,4 @@ jobs:
           ./test_fsz3 > ${RUNNER_TEMP}/fortran_output.txt
           python_val=$(tail -n 1 ${RUNNER_TEMP}/python_output.txt | awk -F'=' '{printf "%.10f\n", $2}')
           fortran_val=$(tail -n 1 ${RUNNER_TEMP}/fortran_output.txt | awk -F'=' '{printf "%.10f\n", $2}') 
-          if [ "$python_output_value" = "$fortran_output_value" ]; then echo "Values are equal"; else echo "Values are different"; exit 1; fi
+          if [ "$python_val" = "$fortran_val" ]; then echo "Values are equal"; else echo "Values are different"; exit 1; fi
