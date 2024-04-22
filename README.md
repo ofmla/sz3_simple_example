@@ -1,5 +1,6 @@
 [![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
 [![Fortran](https://img.shields.io/badge/Fortran-734f96?logo=fortran&style=flat)](https://fortran-lang.org)
+![Build Status](https://github.com/ofmla/sz3_simple_example/actions/workflows/test_bindings.yml/badge.svg)
 
 
 # Fortran Bindings for SZ3 Compression Library
